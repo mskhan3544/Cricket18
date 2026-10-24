@@ -370,7 +370,10 @@ W(GetTimeFormatA) {
 W(HeapCreate) { RET(3, HEAP_HANDLE); }
 W(HeapDestroy) { RET(1, 1); }
 W(GetProcessHeap) { RET(0, HEAP_HANDLE); }
-W(HeapAlloc) { RET(3, heap_alloc(ARG(2), ARG(1) & 8)); }
+W(HeapAlloc) {
+    if (ARG(2) >= 0x100000) LOG("[kernel32] HeapAlloc(%x) from %08x\n", ARG(2), R32(c->esp));
+    RET(3, heap_alloc(ARG(2), ARG(1) & 8));
+}
 W(HeapFree) { heap_free(ARG(2)); RET(3, 1); }
 W(HeapReAlloc) {
     if (ARG(1) & 0x10 /* HEAP_REALLOC_IN_PLACE_ONLY */) RET(4, heap_size(ARG(2)) >= ARG(3) ? ARG(2) : 0);
@@ -384,7 +387,9 @@ W(LocalFree) { heap_free(ARG(0)); RET(1, 0); }
 W(VirtualAlloc) {
     uint32_t addr = ARG(0), size = ARG(1);
     if (addr) RET(4, addr);  /* committing inside a region we already handed out */
-    RET(4, guest_valloc(size));
+    uint32_t a = guest_valloc(size);
+    LOG("[kernel32] VirtualAlloc(%x) -> %08x from %08x\n", size, a, R32(c->esp));
+    RET(4, a);
 }
 W(VirtualFree) { RET(3, 1); }
 W(VirtualProtect) {

@@ -40,12 +40,21 @@ async function readMarker() {
   } catch { return null; }
 }
 
-async function writeMarker(version) {
+async function writeMarker(version, extra) {
   const fh = await (await gameDir(true)).getFileHandle(MARKER, { create: true });
   const w = await fh.createWritable();
-  await w.write(JSON.stringify({ version, at: new Date().toISOString() }));
+  await w.write(JSON.stringify({ version, ...extra, at: new Date().toISOString() }));
   await w.close();
 }
+
+// a short hash of a sorted list of lines
+async function shortHash(lines) {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(lines.sort().join('\n')));
+  return [...new Uint8Array(digest)].slice(0, 6).map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+// the server's game folder as of its file list: when it differs from the copy's, the folder changed since
+const serverSig = (files) => shortHash(files.map((e) => `${e.path}:${e.size}:${e.mtime}`));
 
 async function fileHandle(dir, relPath, create) {
   const parts = relPath.split('/');
@@ -74,11 +83,11 @@ async function importFromServer(files) {
     const r = await fetch(url(e.path));
     if (!r.ok) throw new Error(`Could not fetch ${e.path} (${r.status})`);
     return r.body;
-  } })));
+  } })), { server: await serverSig(files) });
 }
 
-// list: [{ dest, size, data() -> Blob | ReadableStream }]
-async function importList(list) {
+// list: [{ dest, size, data() -> Blob | ReadableStream }]; extra: more fields for the marker
+async function importList(list, extra) {
   if (!list.some((e) => e.dest.toLowerCase().endsWith('.exe'))) throw new Error('No .exe in that folder.');
   const root = await navigator.storage.getDirectory();
   try { await root.removeEntry(OPFS_DIR, { recursive: true }); } catch {}
@@ -96,9 +105,7 @@ async function importList(list) {
     done += e.size;
     $('progress').value = done / total;
   }
-  const sig = list.map((e) => `${e.dest}:${e.size}`).sort().join('\n');
-  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(sig));
-  await writeMarker([...new Uint8Array(digest)].slice(0, 6).map((b) => b.toString(16).padStart(2, '0')).join(''));
+  await writeMarker(await shortHash(list.map((e) => `${e.dest}:${e.size}`)), extra);
   $('progress').classList.add('hidden');
 }
 
@@ -404,8 +411,13 @@ async function boot() {
   };
 
   $('reset').onclick = (e) => { e.preventDefault(); show('loading'); showPicker('Choose your Cricket18-Browser-Game folder.'); };
-  if (!(await readMarker())) {
+  const marker = await readMarker();
+  if (!marker) {
     showPicker('Choose your Cricket18-Browser-Game folder to start.');
+    return;
+  }
+  if (serverFiles && marker.server !== await serverSig(serverFiles)) {
+    showPicker('The game files on this computer have changed since they were copied. Load them again.');
     return;
   }
   ready();

@@ -16,12 +16,13 @@ extern char g_trap_msg[256];
 #define GUEST_HEAP_BASE        0x10000000u
 /* Natively the guest gets a full 4 GiB reservation. In the browser (wasm32) it must share a 4 GiB
    memory with everything else, so the heap and VirtualAlloc ranges are compacted: the game peaks at
-   ~125 MB of heap and ~580 MB of virtual allocations (mostly mapped archives). */
+   ~125 MB of heap and ~580 MB of virtual allocations (mostly mapped archives). Cricket 18's larger main
+   heap (tools/extract_cricket18.py) takes the heap to ~245 MB, so it gets 384 MB. */
 #ifdef __EMSCRIPTEN__
-#define GUEST_SPACE            0x50000000ull
-#define GUEST_HEAP_HI          0x20000000u
-#define GUEST_VALLOC_LO        0x20000000u
-#define GUEST_VALLOC_HI        0x50000000u
+#define GUEST_SPACE            0x60000000ull
+#define GUEST_HEAP_HI          0x28000000u
+#define GUEST_VALLOC_LO        0x28000000u
+#define GUEST_VALLOC_HI        0x60000000u
 #else
 #define GUEST_SPACE            0x100000000ull
 #define GUEST_HEAP_HI          0x60000000u

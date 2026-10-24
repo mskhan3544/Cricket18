@@ -44,7 +44,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 for n in names:
                     if n == ".DS_Store": continue
                     f = os.path.join(d, n)
-                    files.append({"path": os.path.relpath(f, GAME).replace(os.sep, "/"), "size": os.path.getsize(f)})
+                    files.append({"path": os.path.relpath(f, GAME).replace(os.sep, "/"), "size": os.path.getsize(f),
+                                  "mtime": int(os.path.getmtime(f))})
             body = json.dumps(files).encode()
             self.send_response(200)
             self.send_header("Content-Type", "application/json")

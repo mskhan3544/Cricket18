@@ -2,8 +2,14 @@
 
 ## This build: Cricket 18 (the Cricket 07 mod)
 
-The mod's `Cricket18.exe` is a small Visual Basic launcher with the real Cricket 07 program embedded in it;
-`work/cricket07.exe` is that program, cut out of the launcher (offset `0xe378`, 4,296,704 bytes).
+The mod's `Cricket18.exe` is a small Visual Basic launcher with the real Cricket 07 program embedded in it.
+`tools/extract_cricket18.py` cuts that program out to `work/cricket07.exe` and undoes the four hooks the
+launcher fills in at run time (without it they call empty memory and the game crashes as a match starts):
+
+```bash
+python3 tools/extract_cricket18.py ../CRICKET18/Cricket18.exe work/cricket07.exe
+```
+
 `../Cricket18-Browser-Game` is the mod's `CRICKET 18` folder plus that program, with the mod's rosters in
 `My Documents` (`work/profile.h` points the game's My Documents there).
 
